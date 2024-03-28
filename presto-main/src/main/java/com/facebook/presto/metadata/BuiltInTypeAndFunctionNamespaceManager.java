@@ -103,6 +103,8 @@ import com.facebook.presto.operator.aggregation.noisyaggregation.NoisyApproximat
 import com.facebook.presto.operator.aggregation.noisyaggregation.NoisyApproximateSetSfmAggregationDefaultBucketsPrecision;
 import com.facebook.presto.operator.aggregation.noisyaggregation.NoisyApproximateSetSfmAggregationDefaultPrecision;
 import com.facebook.presto.operator.aggregation.noisyaggregation.NoisyApproximateSetSfmFromIndexAndZerosAggregation;
+import com.facebook.presto.operator.aggregation.noisyaggregation.NoisyApproximateSetSfmFromIndexAndZerosAggregationDefaultBucketsPrecision;
+import com.facebook.presto.operator.aggregation.noisyaggregation.NoisyApproximateSetSfmFromIndexAndZerosAggregationDefaultPrecision;
 import com.facebook.presto.operator.aggregation.noisyaggregation.NoisyCountIfGaussianAggregation;
 import com.facebook.presto.operator.aggregation.noisyaggregation.SfmSketchMergeAggregation;
 import com.facebook.presto.operator.aggregation.reservoirsample.ReservoirSampleFunction;
@@ -683,6 +685,8 @@ public class BuiltInTypeAndFunctionNamespaceManager
                 .aggregate(NoisyApproximateSetSfmAggregationDefaultBucketsPrecision.class)
                 .aggregate(NoisyApproximateSetSfmAggregationDefaultPrecision.class)
                 .aggregate(NoisyApproximateSetSfmFromIndexAndZerosAggregation.class)
+                .aggregate(NoisyApproximateSetSfmFromIndexAndZerosAggregationDefaultBucketsPrecision.class)
+                .aggregate(NoisyApproximateSetSfmFromIndexAndZerosAggregationDefaultPrecision.class)
                 .aggregate(NoisyApproximateDistinctCountSfmAggregation.class)
                 .aggregate(NoisyApproximateDistinctCountSfmAggregationDefaultBucketsPrecision.class)
                 .aggregate(NoisyApproximateDistinctCountSfmAggregationDefaultPrecision.class)
