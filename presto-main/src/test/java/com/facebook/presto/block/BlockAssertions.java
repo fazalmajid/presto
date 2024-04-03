@@ -24,6 +24,7 @@ import com.facebook.presto.common.type.DecimalType;
 import com.facebook.presto.common.type.MapType;
 import com.facebook.presto.common.type.RowType;
 import com.facebook.presto.common.type.Type;
+import com.facebook.presto.type.IntegerOperators;
 import io.airlift.slice.Slice;
 
 import java.lang.invoke.MethodHandle;
@@ -755,6 +756,32 @@ public final class BlockAssertions
 
         int[] ids = IntStream.range(0, positionCount + idsOffset).map(i -> ThreadLocalRandom.current().nextInt(max(dictionary.getPositionCount() / 10, 1))).toArray();
         return new DictionaryBlock(idsOffset, positionCount, dictionary, ids, false, randomDictionaryId());
+    }
+
+    public static Block createLongSequenceIndexBlock(int start, int end, int indexBits)
+    {
+        int shift = 64 - indexBits;
+        BlockBuilder builder = BIGINT.createFixedSizeBlockBuilder(end - start);
+
+        for (int i = start; i < end; i++) {
+            long h = IntegerOperators.xxHash64(i);
+            BIGINT.writeLong(builder, h >>> shift);
+        }
+
+        return builder.build();
+    }
+
+    public static Block createLongSequenceZerosBlock(int start, int end, int indexBits, int precision)
+    {
+        BlockBuilder builder = BIGINT.createFixedSizeBlockBuilder(end - start);
+        precision = min(precision - 1, 64 - indexBits);
+
+        for (int i = start; i < end; i++) {
+            long h = IntegerOperators.xxHash64(i);
+            BIGINT.writeLong(builder, min(Long.numberOfTrailingZeros(h), precision));
+        }
+
+        return builder.build();
     }
 
     // Note: Make sure positionCount is sufficiently large if nestedNullRate or primitiveNullRate is greater than 0
