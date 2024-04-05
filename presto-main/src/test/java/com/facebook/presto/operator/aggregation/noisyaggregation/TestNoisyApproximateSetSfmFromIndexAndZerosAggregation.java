@@ -15,20 +15,21 @@ package com.facebook.presto.operator.aggregation.noisyaggregation;
 
 import com.facebook.presto.common.Page;
 import com.facebook.presto.common.block.Block;
+import com.facebook.presto.common.block.BlockBuilder;
 import com.facebook.presto.common.type.SqlVarbinary;
 import com.facebook.presto.common.type.Type;
 import com.facebook.presto.operator.aggregation.noisyaggregation.sketch.SfmSketch;
+import com.facebook.presto.type.IntegerOperators;
 import org.testng.annotations.Test;
 
 import java.util.function.BiFunction;
 
 import static com.facebook.presto.block.BlockAssertions.createDoubleRepeatBlock;
 import static com.facebook.presto.block.BlockAssertions.createLongRepeatBlock;
-import static com.facebook.presto.block.BlockAssertions.createLongSequenceIndexBlock;
-import static com.facebook.presto.block.BlockAssertions.createLongSequenceZerosBlock;
 import static com.facebook.presto.common.type.BigintType.BIGINT;
 import static com.facebook.presto.common.type.DoubleType.DOUBLE;
 import static com.facebook.presto.operator.aggregation.AggregationTestUtils.assertAggregation;
+import static java.lang.Math.min;
 
 /**
  * Tests for the noisy_approx_set_sfm function.
@@ -68,6 +69,32 @@ public class TestNoisyApproximateSetSfmFromIndexAndZerosAggregation
     private void assertSketchSize(Block valuesBlock, Type valueType, double epsilon, SqlVarbinary expected)
     {
         assertFunction(valuesBlock, valueType, epsilon, this::sketchSizesMatch, expected);
+    }
+
+    public static Block createLongSequenceIndexBlock(int start, int end, int indexBits)
+    {
+        int shift = 64 - indexBits;
+        BlockBuilder builder = BIGINT.createFixedSizeBlockBuilder(end - start);
+
+        for (int i = start; i < end; i++) {
+            long h = IntegerOperators.xxHash64(i);
+            BIGINT.writeLong(builder, h >>> shift);
+        }
+
+        return builder.build();
+    }
+
+    public static Block createLongSequenceZerosBlock(int start, int end, int indexBits, int precision)
+    {
+        BlockBuilder builder = BIGINT.createFixedSizeBlockBuilder(end - start);
+        precision = min(precision - 1, 64 - indexBits);
+
+        for (int i = start; i < end; i++) {
+            long h = IntegerOperators.xxHash64(i);
+            BIGINT.writeLong(builder, min(Long.numberOfTrailingZeros(h), precision));
+        }
+
+        return builder.build();
     }
 
     /**
