@@ -22,6 +22,7 @@ import com.facebook.presto.operator.aggregation.noisyaggregation.sketch.SfmSketc
 import com.facebook.presto.type.IntegerOperators;
 import org.testng.annotations.Test;
 
+import java.util.Objects;
 import java.util.function.BiFunction;
 
 import static com.facebook.presto.block.BlockAssertions.createDoubleRepeatBlock;
@@ -54,21 +55,6 @@ public class TestNoisyApproximateSetSfmFromIndexAndZerosAggregation
         SfmSketch sketchA = getSketchFromResult(a);
         SfmSketch sketchB = getSketchFromResult(b);
         return sketchA.getBitmap().length() == sketchB.getBitmap().length();
-    }
-
-    private void assertSketchSize(Block valuesBlock, Type valueType, double epsilon, int numberOfBuckets, int precision, SqlVarbinary expected)
-    {
-        assertFunction(valuesBlock, valueType, epsilon, numberOfBuckets, precision, this::sketchSizesMatch, expected);
-    }
-
-    private void assertSketchSize(Block valuesBlock, Type valueType, double epsilon, int numberOfBuckets, SqlVarbinary expected)
-    {
-        assertFunction(valuesBlock, valueType, epsilon, numberOfBuckets, this::sketchSizesMatch, expected);
-    }
-
-    private void assertSketchSize(Block valuesBlock, Type valueType, double epsilon, SqlVarbinary expected)
-    {
-        assertFunction(valuesBlock, valueType, epsilon, this::sketchSizesMatch, expected);
     }
 
     public static Block createLongSequenceIndexBlock(int start, int end, int indexBits)
@@ -151,6 +137,11 @@ public class TestNoisyApproximateSetSfmFromIndexAndZerosAggregation
                 expected);
     }
 
+    protected void assertEquivalence(Block valuesBlock1, Type valueType1, Block valuesBlock2, Type valueType2, double epsilon, int numberOfBuckets, Object expected)
+    {
+        assertFunction(valuesBlock1, valueType1, valuesBlock2, valueType2, epsilon, numberOfBuckets, Objects::equals, expected);
+    }
+
     /**
      * Assert (approximate) cardinality match on function with signature F(value1, value2, epsilon, numberOfBuckets, precision)
      */
@@ -196,20 +187,27 @@ public class TestNoisyApproximateSetSfmFromIndexAndZerosAggregation
         assertFunction(valuesBlock1, valueType1, valuesBlock2, valueType2, epsilon, this::sketchSizesMatch, expected);
     }
 
+    /**
+     * Verify SFMs created using the value or using index and zeros are identical
+     */
+    @Test
+    public void testSfmEquivalence()
+    {
+        SqlVarbinary refSketch = toSqlVarbinary(createLongSketch(8192, 24, 1, 100_000));
+
+        Block indexValuesBlock = createLongSequenceIndexBlock(1, 100_000, 13);
+        Block zerosValuesBlock = createLongSequenceZerosBlock(1, 100_000, 13, 24);
+
+        assertEquivalence(indexValuesBlock, BIGINT, zerosValuesBlock, BIGINT, SfmSketch.NON_PRIVATE_EPSILON, 8192, refSketch);
+    }
+
     @Test
     public void testNonPrivateInteger()
     {
-        Block indexValuesBlockBits12 = createLongSequenceIndexBlock(1, 100_000, 12);
-        Block zerosValuesBlockBits12 = createLongSequenceZerosBlock(1, 100_000, 12, 24);
-
-        SqlVarbinary refSketch = toSqlVarbinary(createLongSketch(4096, 24, 1, 100_000));
-        assertCardinality(indexValuesBlockBits12, BIGINT, zerosValuesBlockBits12, BIGINT, SfmSketch.NON_PRIVATE_EPSILON, refSketch, 0);
-        assertSketchSize(indexValuesBlockBits12, BIGINT, zerosValuesBlockBits12, BIGINT, SfmSketch.NON_PRIVATE_EPSILON, refSketch);
-
         Block indexValuesBlockBits13 = createLongSequenceIndexBlock(1, 100_000, 13);
         Block zerosValuesBlockBits13 = createLongSequenceZerosBlock(1, 100_000, 13, 24);
 
-        refSketch = toSqlVarbinary(createLongSketch(8192, 24, 1, 100_000));
+        SqlVarbinary refSketch = toSqlVarbinary(createLongSketch(8192, 24, 1, 100_000));
         assertCardinality(indexValuesBlockBits13, BIGINT, zerosValuesBlockBits13, BIGINT, SfmSketch.NON_PRIVATE_EPSILON, 8192, refSketch, 0);
         assertSketchSize(indexValuesBlockBits13, BIGINT, zerosValuesBlockBits13, BIGINT, SfmSketch.NON_PRIVATE_EPSILON, 8192, refSketch);
 
@@ -224,17 +222,10 @@ public class TestNoisyApproximateSetSfmFromIndexAndZerosAggregation
     @Test
     public void testPrivateInteger()
     {
-        Block indexValuesBlockBits12 = createLongSequenceIndexBlock(1, 100_000, 12);
-        Block zerosValuesBlockBits12 = createLongSequenceZerosBlock(1, 100_000, 12, 24);
-
-        SqlVarbinary refSketch = toSqlVarbinary(createLongSketch(4096, 24, 1, 100_000));
-        assertCardinality(indexValuesBlockBits12, BIGINT, zerosValuesBlockBits12, BIGINT, 8, refSketch, 50_000);
-        assertSketchSize(indexValuesBlockBits12, BIGINT, zerosValuesBlockBits12, BIGINT, 8, refSketch);
-
         Block indexValuesBlockBits13 = createLongSequenceIndexBlock(1, 100_000, 13);
         Block zerosValuesBlockBits13 = createLongSequenceZerosBlock(1, 100_000, 13, 24);
 
-        refSketch = toSqlVarbinary(createLongSketch(8192, 24, 1, 100_000));
+        SqlVarbinary refSketch = toSqlVarbinary(createLongSketch(8192, 24, 1, 100_000));
         assertCardinality(indexValuesBlockBits13, BIGINT, zerosValuesBlockBits13, BIGINT, 8, 8192, refSketch, 50_000);
         assertSketchSize(indexValuesBlockBits13, BIGINT, zerosValuesBlockBits13, BIGINT, 8, 8192, refSketch);
 
